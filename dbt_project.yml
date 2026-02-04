@@ -1,0 +1,14 @@
+name: 'bq_schema_compare'
+version: '1.0.0'
+config-version: 2
+
+analysis-paths: ["analyses"]
+macro-paths: ["macros"]
+
+vars:
+  bq_schema_compare_prod_dataset: ''
+  bq_schema_compare_compare_dataset: ''
+  bq_schema_compare_prod_project: ''      # defaults to target.project
+  bq_schema_compare_compare_project: ''   # defaults to target.project
+  bq_schema_compare_region: 'US'          # 'US' or 'EU'
+  bq_schema_compare_models: []            # list of table names to compare
