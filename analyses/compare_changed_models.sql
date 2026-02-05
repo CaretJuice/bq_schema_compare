@@ -1,5 +1,20 @@
 {#-
-    CI/CD Schema Comparison Analysis
+    CI/CD Schema Comparison Analysis (Reference Implementation)
+
+    This analysis is a reference implementation for CI/CD use cases.
+    For better CI/CD integration, consider using the run-operation approach:
+
+        dbt run-operation compare_schemas --args '{
+            prod_dataset: "production_analytics",
+            compare_dataset: "staging_analytics",
+            models: "${CHANGED_MODELS}",
+            fail_on_diff: true
+        }'
+
+    The run-operation approach is preferred for CI/CD because:
+    - Results are logged directly to console (no need to cat compiled SQL)
+    - The fail_on_diff option provides a proper exit code for CI gates
+    - No separate BigQuery query execution step required
 
     Variant of compare_schemas designed for CI/CD pipeline integration.
     Accepts models as either a list or comma-separated string for easier shell scripting.
@@ -7,7 +22,7 @@
     NOTE: This analysis is skipped (returns empty result) when not configured.
     This allows the package to be installed without blocking dbt runs.
 
-    Usage in CI/CD pipeline:
+    Usage (compile approach):
         # Get changed models from git diff
         CHANGED_MODELS=$(git diff --name-only origin/main...HEAD -- "*/models/**/*.sql" | \
             xargs -I {} basename {} .sql | sort -u | paste -sd,)
@@ -17,6 +32,17 @@
             bq_schema_compare_prod_dataset: \"production_analytics\",
             bq_schema_compare_compare_dataset: \"staging_analytics\",
             bq_schema_compare_models: \"${CHANGED_MODELS}\"
+        }"
+
+    Usage (run-operation approach - recommended):
+        CHANGED_MODELS=$(git diff --name-only origin/main...HEAD -- "*/models/**/*.sql" | \
+            xargs -I {} basename {} .sql | sort -u | paste -sd,)
+
+        dbt run-operation compare_schemas --args "{
+            prod_dataset: \"production_analytics\",
+            compare_dataset: \"staging_analytics\",
+            models: \"${CHANGED_MODELS}\",
+            fail_on_diff: true
         }"
 
     Or with explicit list:

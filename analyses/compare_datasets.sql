@@ -1,7 +1,16 @@
 {#-
-    Full Dataset Schema Comparison Analysis
+    Full Dataset Schema Comparison Analysis (Reference Implementation)
 
-    Compares ALL tables between production and comparison datasets.
+    This analysis is a reference implementation showing how to use the
+    bq_schema_compare.compare_datasets_full() macro. For CI/CD integration,
+    consider using the run-operation approach instead:
+
+        dbt run-operation compare_datasets --args '{
+            prod_dataset: "production_analytics",
+            compare_dataset: "staging_analytics"
+        }'
+
+    This analysis compares ALL tables between production and comparison datasets.
     Unlike compare_schemas which requires a list of specific models, this analysis
     automatically discovers all tables in both datasets and compares them.
 
@@ -13,14 +22,27 @@
     NOTE: This analysis is skipped (returns empty result) when not configured.
     This allows the package to be installed without blocking dbt runs.
 
-    Usage:
+    Usage (compile approach):
         dbt compile --select compare_datasets --vars '{
             bq_schema_compare_prod_dataset: "production_analytics",
             bq_schema_compare_compare_dataset: "staging_analytics"
         }'
 
-    Then run the compiled SQL in BigQuery console:
+        Then run the compiled SQL in BigQuery console:
         cat target/compiled/bq_schema_compare/analyses/compare_datasets.sql
+
+    Usage (run-operation approach - recommended for CI/CD):
+        dbt run-operation compare_datasets --args '{
+            prod_dataset: "production_analytics",
+            compare_dataset: "staging_analytics"
+        }'
+
+        # Fail CI on differences:
+        dbt run-operation compare_datasets --args '{
+            prod_dataset: "production_analytics",
+            compare_dataset: "staging_analytics",
+            fail_on_diff: true
+        }'
 
     Required variables:
         bq_schema_compare_prod_dataset: Production dataset name

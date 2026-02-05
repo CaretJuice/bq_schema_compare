@@ -1,5 +1,15 @@
 {#-
-    Schema Comparison Analysis
+    Schema Comparison Analysis (Reference Implementation)
+
+    This analysis is a reference implementation showing how to use the
+    bq_schema_compare.compare_all_tables() macro. For CI/CD integration,
+    consider using the run-operation approach instead:
+
+        dbt run-operation compare_schemas --args '{
+            prod_dataset: "production_analytics",
+            compare_dataset: "staging_analytics",
+            models: "fct_orders,dim_customers"
+        }'
 
     Compares BigQuery table schemas between production and staging/dev datasets.
     Outputs differences including missing columns, type mismatches, and position changes.
@@ -7,15 +17,30 @@
     NOTE: This analysis is skipped (returns empty result) when not configured.
     This allows the package to be installed without blocking dbt runs.
 
-    Usage:
+    Usage (compile approach):
         dbt compile --select compare_schemas --vars '{
             bq_schema_compare_prod_dataset: "production_analytics",
             bq_schema_compare_compare_dataset: "staging_analytics",
             bq_schema_compare_models: ["fct_orders", "dim_customers"]
         }'
 
-    Then run the compiled SQL in BigQuery console:
+        Then run the compiled SQL in BigQuery console:
         cat target/compiled/bq_schema_compare/analyses/compare_schemas.sql
+
+    Usage (run-operation approach - recommended for CI/CD):
+        dbt run-operation compare_schemas --args '{
+            prod_dataset: "production_analytics",
+            compare_dataset: "staging_analytics",
+            models: "fct_orders,dim_customers"
+        }'
+
+        # Fail CI on differences:
+        dbt run-operation compare_schemas --args '{
+            prod_dataset: "production_analytics",
+            compare_dataset: "staging_analytics",
+            models: "fct_orders,dim_customers",
+            fail_on_diff: true
+        }'
 
     Required variables:
         bq_schema_compare_prod_dataset: Production dataset name
