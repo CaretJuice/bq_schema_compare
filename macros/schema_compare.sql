@@ -113,9 +113,15 @@ where status != 'match'
 -#}
 {% if table_list | length == 0 %}
 {{ bq_schema_compare.empty_result_set() }}
+{% elif table_list | length == 1 %}
+{# Single table - no need for UNION ALL wrapper #}
+{{ bq_schema_compare.compare_table_schemas(prod_project, prod_dataset, compare_project, compare_dataset, table_list[0]) }}
 {% else %}
+{# Multiple tables - wrap each in subquery for UNION ALL compatibility with CTEs #}
 {% for table_name in table_list %}
+select * from (
 {{ bq_schema_compare.compare_table_schemas(prod_project, prod_dataset, compare_project, compare_dataset, table_name) }}
+)
 {% if not loop.last %}
 union all
 

@@ -1,0 +1,31 @@
+name: 'bq_schema_compare_integration_tests'
+version: '1.0.0'
+config-version: 2
+
+profile: 'integration_tests'
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+vars:
+  # Test datasets - these will be created by the test setup
+  test_prod_dataset: "{{ env_var('BQ_TEST_PROD_DATASET', 'bq_schema_compare_test_prod') }}"
+  test_compare_dataset: "{{ env_var('BQ_TEST_COMPARE_DATASET', 'bq_schema_compare_test_compare') }}"
+
+  # Configure the package for testing
+  bq_schema_compare_prod_dataset: "{{ var('test_prod_dataset') }}"
+  bq_schema_compare_compare_dataset: "{{ var('test_compare_dataset') }}"
+
+models:
+  bq_schema_compare_integration_tests:
+    prod:
+      +schema: "{{ env_var('BQ_TEST_PROD_DATASET', 'bq_schema_compare_test_prod') }}"
+    compare:
+      +schema: "{{ env_var('BQ_TEST_COMPARE_DATASET', 'bq_schema_compare_test_compare') }}"

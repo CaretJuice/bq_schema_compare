@@ -1,0 +1,22 @@
+# This file is used for local development
+# CI uses environment variables to configure the profile
+
+integration_tests:
+  target: dev
+  outputs:
+    dev:
+      type: bigquery
+      method: oauth  # For local development
+      project: "{{ env_var('BQ_PROJECT') }}"
+      dataset: "{{ env_var('BQ_TEST_PROD_DATASET', 'bq_schema_compare_test_prod') }}"
+      location: US
+      threads: 4
+
+    ci:
+      type: bigquery
+      method: service-account
+      project: "{{ env_var('BQ_PROJECT') }}"
+      dataset: "{{ env_var('BQ_TEST_PROD_DATASET', 'bq_schema_compare_test_prod') }}"
+      location: US
+      threads: 4
+      keyfile_json: "{{ env_var('BQ_SERVICE_ACCOUNT_JSON', '{}') | as_native }}"

@@ -1,0 +1,25 @@
+[sqlfluff]
+templater = dbt
+dialect = bigquery
+
+# Exclude files that are templates
+exclude_rules = LT05, LT09
+
+[sqlfluff:templater:dbt]
+project_dir = integration_tests
+profiles_dir = integration_tests
+profile = integration_tests
+target = dev
+
+[sqlfluff:indentation]
+indent_unit = space
+tab_space_size = 4
+
+[sqlfluff:rules:capitalisation.keywords]
+capitalisation_policy = lower
+
+[sqlfluff:rules:capitalisation.identifiers]
+capitalisation_policy = lower
+
+[sqlfluff:rules:capitalisation.functions]
+capitalisation_policy = lower

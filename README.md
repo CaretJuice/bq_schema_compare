@@ -1,5 +1,7 @@
 # bq_schema_compare
 
+[![CI](https://github.com/CaretJuice/bq_schema_compare/actions/workflows/ci.yml/badge.svg)](https://github.com/CaretJuice/bq_schema_compare/actions/workflows/ci.yml)
+
 A dbt package for comparing BigQuery table schemas between datasets (e.g., production vs staging/dev).
 
 ## Installation
@@ -335,3 +337,60 @@ Available macros:
 - No tables are materialized - this is analysis-only (inspection, not transformation)
 - Empty result set means schemas match perfectly
 - When not configured, analyses return empty results with helpful comments
+
+## Development
+
+### Running Tests Locally
+
+1. Set up environment variables:
+
+```bash
+export BQ_PROJECT="your-gcp-project"
+export BQ_TEST_PROD_DATASET="bq_schema_compare_test_prod"
+export BQ_TEST_COMPARE_DATASET="bq_schema_compare_test_compare"
+```
+
+2. Create test datasets:
+
+```bash
+bq mk --dataset --location=US $BQ_PROJECT:$BQ_TEST_PROD_DATASET
+bq mk --dataset --location=US $BQ_PROJECT:$BQ_TEST_COMPARE_DATASET
+```
+
+3. Install dependencies and build test tables:
+
+```bash
+cd integration_tests
+dbt deps
+dbt run --select models/prod
+dbt run --select models/compare
+```
+
+4. Run the integration tests:
+
+```bash
+dbt run-operation run_integration_tests
+```
+
+5. Cleanup:
+
+```bash
+bq rm -r -f $BQ_PROJECT:$BQ_TEST_PROD_DATASET
+bq rm -r -f $BQ_PROJECT:$BQ_TEST_COMPARE_DATASET
+```
+
+### CI/CD
+
+This project uses GitHub Actions for CI. Tests run automatically on push and pull requests.
+
+Required GitHub secrets:
+- `BQ_PROJECT` - GCP project ID for testing
+- `BQ_SERVICE_ACCOUNT_JSON` - Service account JSON key with BigQuery permissions
+
+## Contributing
+
+Contributions are welcome! Please open an issue or submit a pull request.
+
+## License
+
+MIT License - see [LICENSE](LICENSE) for details.

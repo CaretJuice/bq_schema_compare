@@ -1,0 +1,141 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  DBT_VERSION: "1.7"
+  PYTHON_VERSION: "3.11"
+  BQ_PROJECT: ${{ secrets.BQ_PROJECT }}
+  BQ_TEST_PROD_DATASET: bq_schema_compare_test_prod_${{ github.run_id }}
+  BQ_TEST_COMPARE_DATASET: bq_schema_compare_test_compare_${{ github.run_id }}
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install sqlfluff
+        run: pip install sqlfluff sqlfluff-templater-dbt dbt-bigquery
+
+      - name: Lint SQL files
+        run: sqlfluff lint macros/ analyses/ --dialect bigquery || true
+        # Allow lint to fail for now - can be made strict later
+
+  compile:
+    name: Compile Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dbt
+        run: pip install dbt-bigquery~=${{ env.DBT_VERSION }}
+
+      - name: Install dbt packages
+        working-directory: integration_tests
+        run: dbt deps
+
+      - name: Check dbt project compiles
+        working-directory: integration_tests
+        run: dbt parse
+        env:
+          # Use dummy values for compilation check (no BQ access needed)
+          BQ_PROJECT: dummy-project
+          BQ_SERVICE_ACCOUNT_JSON: "{}"
+
+  integration:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    # Only run integration tests if we have secrets (not on forks)
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    needs: [lint, compile]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dbt
+        run: pip install dbt-bigquery~=${{ env.DBT_VERSION }}
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.BQ_SERVICE_ACCOUNT_JSON }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Create test datasets
+        run: |
+          echo "Creating test datasets..."
+          bq mk --dataset --location=US ${{ env.BQ_PROJECT }}:${{ env.BQ_TEST_PROD_DATASET }} || true
+          bq mk --dataset --location=US ${{ env.BQ_PROJECT }}:${{ env.BQ_TEST_COMPARE_DATASET }} || true
+
+      - name: Install dbt packages
+        working-directory: integration_tests
+        run: dbt deps
+
+      - name: Build prod test tables
+        working-directory: integration_tests
+        run: dbt run --select models/prod --target ci
+        env:
+          BQ_SERVICE_ACCOUNT_JSON: ${{ secrets.BQ_SERVICE_ACCOUNT_JSON }}
+
+      - name: Build compare test tables
+        working-directory: integration_tests
+        run: dbt run --select models/compare --target ci
+        env:
+          BQ_SERVICE_ACCOUNT_JSON: ${{ secrets.BQ_SERVICE_ACCOUNT_JSON }}
+
+      - name: Run integration tests
+        working-directory: integration_tests
+        run: dbt run-operation run_integration_tests --target ci
+        env:
+          BQ_SERVICE_ACCOUNT_JSON: ${{ secrets.BQ_SERVICE_ACCOUNT_JSON }}
+
+      - name: Test run-operation compare_datasets
+        working-directory: integration_tests
+        run: |
+          dbt run-operation compare_datasets --target ci --args "{
+            prod_dataset: '${{ env.BQ_TEST_PROD_DATASET }}',
+            compare_dataset: '${{ env.BQ_TEST_COMPARE_DATASET }}'
+          }"
+        env:
+          BQ_SERVICE_ACCOUNT_JSON: ${{ secrets.BQ_SERVICE_ACCOUNT_JSON }}
+
+      - name: Test run-operation compare_schemas
+        working-directory: integration_tests
+        run: |
+          dbt run-operation compare_schemas --target ci --args "{
+            prod_dataset: '${{ env.BQ_TEST_PROD_DATASET }}',
+            compare_dataset: '${{ env.BQ_TEST_COMPARE_DATASET }}',
+            models: 'identical_table,type_mismatch'
+          }"
+        env:
+          BQ_SERVICE_ACCOUNT_JSON: ${{ secrets.BQ_SERVICE_ACCOUNT_JSON }}
+
+      - name: Cleanup test datasets
+        if: always()
+        run: |
+          echo "Cleaning up test datasets..."
+          bq rm -r -f ${{ env.BQ_PROJECT }}:${{ env.BQ_TEST_PROD_DATASET }} || true
+          bq rm -r -f ${{ env.BQ_PROJECT }}:${{ env.BQ_TEST_COMPARE_DATASET }} || true

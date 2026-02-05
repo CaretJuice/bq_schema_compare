@@ -1,0 +1,14 @@
+version: 2
+
+models:
+  - name: compare_identical_table
+    description: Table with identical schema in both datasets
+
+  - name: compare_type_mismatch
+    description: Table where column types differ between datasets
+
+  - name: compare_column_diff
+    description: Table with different columns between datasets
+
+  - name: compare_compare_only
+    description: Table that only exists in comparison (new table)

@@ -69,7 +69,7 @@ select
     cast(null as int64) as compare_position,
     cast(null as timestamp) as prod_last_modified,
     cast(null as timestamp) as compare_last_modified
-where false
+limit 0
 {% endmacro %}
 
 
