@@ -14,7 +14,7 @@ integration_tests:
 
     ci:
       type: bigquery
-      method: service-account
+      method: service-account-json
       project: "{{ env_var('BQ_PROJECT') }}"
       dataset: "{{ env_var('BQ_TEST_PROD_DATASET', 'bq_schema_compare_test_prod') }}"
       location: US
